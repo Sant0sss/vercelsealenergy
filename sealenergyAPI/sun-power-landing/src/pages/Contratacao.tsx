@@ -138,9 +138,9 @@ export default function Contratacao() {
               <div
                 className={`w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all ${
                   isActive
-                    ? "bg-orange-500 border-orange-500 text-white"
+                    ? "bg-blue-500 border-blue-500 text-white"
                     : isDone
-                    ? "bg-orange-100 border-orange-400 text-orange-500"
+                    ? "bg-blue-100 border-blue-400 text-blue-500"
                     : "bg-white border-gray-300 text-gray-400"
                 }`}
               >
@@ -148,14 +148,14 @@ export default function Contratacao() {
               </div>
               <span
                 className={`text-xs font-semibold max-w-[80px] text-center leading-tight ${
-                  isActive ? "text-orange-500" : isDone ? "text-orange-400" : "text-gray-400"
+                  isActive ? "text-blue-500" : isDone ? "text-blue-400" : "text-gray-400"
                 }`}
               >
                 {s.label}
               </span>
             </div>
             {idx < STEPS.length - 1 && (
-              <div className={`h-0.5 w-12 sm:w-20 mx-1 mb-5 ${s.id < step ? "bg-orange-400" : "bg-gray-300"}`} />
+              <div className={`h-0.5 w-12 sm:w-20 mx-1 mb-5 ${s.id < step ? "bg-blue-400" : "bg-gray-300"}`} />
             )}
           </div>
         );
@@ -165,8 +165,8 @@ export default function Contratacao() {
 
   /* ── step 1: Envie sua fatura ── */
   const StepFatura = () => (
-    <div className="max-w-lg mx-auto bg-white rounded-2xl border-2 border-orange-400 p-8 shadow-lg">
-      <h2 className="text-center text-xl font-bold text-orange-500 mb-6">
+    <div className="max-w-lg mx-auto bg-white rounded-2xl border-2 border-blue-400 p-8 shadow-lg">
+      <h2 className="text-center text-xl font-bold text-blue-500 mb-6">
         Anexe sua fatura de energia
       </h2>
 
@@ -180,7 +180,7 @@ export default function Contratacao() {
         value={cpfCnpj}
         onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
         placeholder="Digite o número do seu documento"
-        className="w-full rounded-full border border-gray-300 px-5 py-3 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 mb-5"
+        className="w-full rounded-full border border-gray-300 px-5 py-3 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-5"
       />
 
       {/* File + senha */}
@@ -191,7 +191,7 @@ export default function Contratacao() {
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-orange-500 text-white text-sm font-semibold hover:bg-orange-600 transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-blue-500 text-white text-sm font-semibold hover:bg-blue-600 transition-colors"
         >
           <UploadIcon />
           {file ? file.name.slice(0, 20) + (file.name.length > 20 ? "…" : "") : "Escolher arquivo"}
@@ -201,7 +201,7 @@ export default function Contratacao() {
           value={senhaPdf}
           onChange={(e) => setSenhaPdf(e.target.value)}
           placeholder="Senha PDF"
-          className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-orange-400"
+          className="flex-1 rounded-full border border-gray-300 px-4 py-2.5 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-400"
         />
         <input
           ref={fileInputRef}
@@ -252,7 +252,7 @@ export default function Contratacao() {
         disabled={isUploading}
         className={`w-full rounded-full py-3 font-bold text-sm transition-colors ${
           cpfCnpj && file
-            ? "bg-orange-500 text-white hover:bg-orange-600"
+            ? "bg-blue-500 text-white hover:bg-blue-600"
             : "bg-gray-200 text-gray-500 cursor-not-allowed"
         } disabled:opacity-70`}
       >
@@ -276,13 +276,13 @@ export default function Contratacao() {
         <button
           type="button"
           onClick={() => navigate("/")}
-          className="text-sm text-orange-500 font-semibold hover:underline"
+          className="text-sm text-blue-500 font-semibold hover:underline"
         >
           ← Voltar
         </button>
         <span className="text-xs text-gray-400">
           Vamos começar?{" "}
-          <strong className="text-orange-500">Anexe sua última fatura</strong> de energia e deixe o
+          <strong className="text-blue-500">Anexe sua última fatura</strong> de energia e deixe o
           resto com a gente!
         </span>
       </div>
