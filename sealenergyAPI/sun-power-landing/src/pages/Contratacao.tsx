@@ -61,9 +61,6 @@ const GEDISA_API_BASE =
   (import.meta as any).env?.VITE_GEDISA_API_BASE ||
   ((import.meta as any).env?.DEV ? "/gedisa-api/interno/api/v1" : "/api/gedisa/interno/api/v1");
 
-// Endpoint de conversão de PDF demora ~60s — chama direto no browser para evitar timeout do proxy Vercel Hobby (10s)
-const GEDISA_DIRECT = "https://api.gedisa.com.br/interno/api/v1";
-
 export default function Contratacao() {
   const navigate = useNavigate();
   const personalToken = typeof window !== "undefined" ? sessionStorage.getItem("gedisa_token") || "" : "";
@@ -140,7 +137,7 @@ export default function Contratacao() {
       };
       if (senhaPdf.trim()) body.senha_pdf = senhaPdf.trim();
 
-      const response = await fetch(`${GEDISA_DIRECT}/converter-pdf-para-json-formatado`, {
+      const response = await fetch(`${GEDISA_API_BASE}/converter-pdf-para-json-formatado`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
