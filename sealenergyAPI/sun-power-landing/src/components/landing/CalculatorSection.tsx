@@ -193,19 +193,15 @@ const CalculatorSection = () => {
         return;
       }
 
-      const personalToken = extractPersonalToken(result);
-      if (personalToken) {
-        setPersonalToken(personalToken);
-        setIsConfirmPhoneOpen(false);
-        setFlowFeedback({ type: "success", message: "Telefone validado automaticamente." });
-        await submitLead();
-        return;
+      const tokenFromVerify = extractPersonalToken(result);
+      if (tokenFromVerify) {
+        setPersonalToken(tokenFromVerify);
       }
 
       setIsConfirmPhoneOpen(false);
       setIsTokenModalOpen(true);
       setTokenCode(["", "", "", "", "", ""]);
-      setFlowFeedback({ type: "success", message: "Código enviado por SMS." });
+      setFlowFeedback({ type: "success", message: "Código enviado por SMS. Digite o token para continuar." });
       setTimeout(() => tokenRefs.current[0]?.focus(), 0);
     } catch {
       setFlowFeedback({ type: "error", message: "Falha ao enviar SMS. Tente novamente." });
@@ -214,8 +210,10 @@ const CalculatorSection = () => {
     }
   };
 
-  const submitLead = async () => {
-    if (!personalToken) {
+  const submitLead = async (authToken?: string) => {
+    const tokenToUse = authToken || personalToken;
+
+    if (!tokenToUse) {
       setFlowFeedback({ type: "error", message: "Token de autenticação não encontrado. Valide o telefone novamente." });
       return;
     }
@@ -226,7 +224,7 @@ const CalculatorSection = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${personalToken}`,
+          Authorization: `Bearer ${tokenToUse}`,
         },
         body: JSON.stringify({
           nome: leadForm.nome,
@@ -283,7 +281,7 @@ const CalculatorSection = () => {
 
       setPersonalToken(receivedToken);
 
-      await submitLead();
+      await submitLead(receivedToken);
     } catch {
       setFlowFeedback({ type: "error", message: "Falha ao validar token. Tente novamente." });
     } finally {
