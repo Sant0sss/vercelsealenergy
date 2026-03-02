@@ -384,13 +384,13 @@ export default function Contratacao() {
         </span>
       </div>
       <div className="max-w-3xl mx-auto">
-        <Stepper />
-        {step === 1 && <StepFatura />}
-        {step === 2 && <StepConfirma />}
-        {step === 3 && <PlaceholderStep title="Proposta de economia" />}
-        {step === 4 && <PlaceholderStep title="Termo de adesao" />}
+        {Stepper()}
+        {step === 1 && StepFatura()}
+        {step === 2 && StepConfirma()}
+        {step === 3 && PlaceholderStep({ title: "Proposta de economia" })}
+        {step === 4 && PlaceholderStep({ title: "Termo de adesao" })}
       </div>
-      {showUnreadModal && <UnreadModal />}
+      {showUnreadModal && UnreadModal()}
     </div>
   );
 }
