@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useFadeIn } from "@/hooks/useFadeIn";
 
 type ParceiroData = {
@@ -19,6 +20,7 @@ type GedisaResponse<T> = {
 
 const CalculatorSection = () => {
   const ref = useFadeIn();
+  const navigate = useNavigate();
   const [value, setValue] = useState(300);
   const [code, setCode] = useState(["", "", "", "", "", "", ""]);
   const [parceiroData, setParceiroData] = useState<ParceiroData | null>(null);
@@ -244,7 +246,12 @@ const CalculatorSection = () => {
 
       setLeadCreated(true);
       setIsTokenModalOpen(false);
-      setFlowFeedback({ type: "success", message: "Cadastro concluído com sucesso!" });
+      setFlowFeedback({ type: "success", message: "Cadastro concluído! Redirecionando…" });
+      sessionStorage.setItem("gedisa_token", tokenToUse);
+      sessionStorage.setItem("gedisa_lead_nome", leadForm.nome);
+      sessionStorage.setItem("gedisa_lead_celular", leadForm.celular);
+      sessionStorage.setItem("gedisa_lead_email", leadForm.email);
+      setTimeout(() => navigate("/contratacao"), 1200);
     } catch {
       setFlowFeedback({ type: "error", message: "Falha ao cadastrar lead. Tente novamente." });
     } finally {
