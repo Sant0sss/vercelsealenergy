@@ -14,6 +14,7 @@ type GedisaResponse<T> = {
   status: string;
   message?: string;
   data?: T;
+  personal_token?: string;
 };
 
 const CalculatorSection = () => {
@@ -162,6 +163,10 @@ const CalculatorSection = () => {
     }
   };
 
+  const extractPersonalToken = (result: GedisaResponse<any>) => {
+    return result.personal_token || result.data?.personal_token;
+  };
+
   const sendPhoneVerificationSms = async () => {
     if (!validatedCode || !isLeadFormValid) return;
 
@@ -183,6 +188,14 @@ const CalculatorSection = () => {
       const result: GedisaResponse<{ personal_token?: string }> = await response.json();
       if (!response.ok || result.status !== "success") {
         setFlowFeedback({ type: "error", message: result.message || "Não foi possível enviar o SMS." });
+        return;
+      }
+
+      const personalToken = extractPersonalToken(result);
+      if (personalToken) {
+        setIsConfirmPhoneOpen(false);
+        setFlowFeedback({ type: "success", message: "Telefone validado automaticamente." });
+        await submitLead();
         return;
       }
 
@@ -251,7 +264,8 @@ const CalculatorSection = () => {
       });
 
       const result: GedisaResponse<{ personal_token?: string }> = await response.json();
-      if (!response.ok || !result.data?.personal_token) {
+      const personalToken = extractPersonalToken(result);
+      if (!response.ok || !personalToken) {
         setFlowFeedback({ type: "error", message: result.message || "Token inválido. Verifique e tente novamente." });
         return;
       }
