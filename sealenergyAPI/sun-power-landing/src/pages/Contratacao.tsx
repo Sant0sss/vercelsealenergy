@@ -122,7 +122,7 @@ export default function Contratacao() {
       formData.append("cpf_cnpj", digits);
       formData.append("fatura", file);
       if (senhaPdf.trim()) formData.append("senha_pdf", senhaPdf.trim());
-      const response = await fetch(`${GEDISA_API_BASE}/lead-faturas`, {
+      const response = await fetch(`${GEDISA_API_BASE}/converter-pdf-para-json-formatado`, {
         method: "POST",
         headers: { Authorization: `Bearer ${personalToken}` },
         body: formData,
@@ -246,7 +246,7 @@ export default function Contratacao() {
         className={`w-full rounded-full py-3 font-bold text-sm transition-colors ${
           cpfCnpj && file ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-200 text-gray-500 cursor-not-allowed"
         } disabled:opacity-70`}>
-        {isUploading ? "Enviando..." : "Enviar"}
+        {isUploading ? "Processando fatura... (~20s)" : "Enviar"}
       </button>
     </div>
   );
