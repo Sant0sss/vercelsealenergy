@@ -75,7 +75,6 @@ export default function Contratacao() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showUnreadModal, setShowUnreadModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const cpfInputRef = useRef<HTMLInputElement>(null);
 
   // step 2
   const [confirmaForm, setConfirmaForm] = useState<ConfirmaForm>({
@@ -84,29 +83,6 @@ export default function Contratacao() {
   const [isSubmittingConfirma, setIsSubmittingConfirma] = useState(false);
   const [confirmaFeedback, setConfirmaFeedback] = useState<string | null>(null);
   const [leadFaturaId, setLeadFaturaId] = useState<string | number | null>(null);
-
-  // cpfCnpj stores only raw digits; display uses formatCpfCnpj(cpfCnpj)
-  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const input = e.target;
-    const cursorPos = input.selectionStart ?? input.value.length;
-    const digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g, "").length;
-    const newRaw = e.target.value.replace(/\D/g, "").slice(0, 14);
-    setCpfCnpj(newRaw);
-    requestAnimationFrame(() => {
-      const el = cpfInputRef.current;
-      if (!el) return;
-      const formatted = formatCpfCnpj(newRaw);
-      let count = 0;
-      let pos = formatted.length;
-      for (let i = 0; i < formatted.length; i++) {
-        if (/\d/.test(formatted[i])) {
-          count++;
-          if (count === digitsBeforeCursor) { pos = i + 1; break; }
-        }
-      }
-      el.setSelectionRange(pos, pos);
-    });
-  };
 
   const formatCpfCnpj = (raw: string) => {
     const d = raw.replace(/\D/g, "").slice(0, 14);
@@ -142,32 +118,14 @@ export default function Contratacao() {
     setIsUploading(true);
     setFeedback(null);
     try {
-      // Converter arquivo para base64
-      const base64Pdf = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const result = reader.result as string;
-          // remove "data:...;base64," prefix
-          resolve(result.split(",")[1] || result);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-
-      const body: Record<string, string> = {
-        base64_pdf: base64Pdf,
-        fileName: file.name,
-        cpf_cnpj: digits,
-      };
-      if (senhaPdf.trim()) body.senha_pdf = senhaPdf.trim();
-
-      const response = await fetch(`${GEDISA_API_BASE}/converter-pdf-para-json-formatado`, {
+      const formData = new FormData();
+      formData.append("cpf_cnpj", digits);
+      formData.append("fatura", file);
+      if (senhaPdf.trim()) formData.append("senha_pdf", senhaPdf.trim());
+      const response = await fetch(`${GEDISA_API_BASE}/lead-faturas`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${personalToken}`,
-        },
-        body: JSON.stringify(body),
+        headers: { Authorization: `Bearer ${personalToken}` },
+        body: formData,
       });
       const result: { status?: string; message?: string; data?: FaturaAPIData } =
         await response.json().catch(() => ({}));
@@ -254,9 +212,8 @@ export default function Contratacao() {
       <h2 className="text-center text-xl font-bold text-blue-500 mb-6">Anexe sua fatura de energia</h2>
       <label className="block text-sm font-semibold text-gray-700 mb-1">Informe seu CPF ou CNPJ</label>
       <input
-        ref={cpfInputRef}
-        type="text" inputMode="numeric" value={formatCpfCnpj(cpfCnpj)}
-        onChange={handleCpfChange}
+        type="text" inputMode="numeric" value={cpfCnpj}
+        onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
         placeholder="Digite o numero do seu documento"
         className="w-full rounded-full border border-gray-300 px-5 py-3 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-5"
       />
@@ -289,7 +246,7 @@ export default function Contratacao() {
         className={`w-full rounded-full py-3 font-bold text-sm transition-colors ${
           cpfCnpj && file ? "bg-blue-500 text-white hover:bg-blue-600" : "bg-gray-200 text-gray-500 cursor-not-allowed"
         } disabled:opacity-70`}>
-        {isUploading ? "Processando fatura... (~20s)" : "Enviar"}
+        {isUploading ? "Enviando..." : "Enviar"}
       </button>
     </div>
   );
