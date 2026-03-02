@@ -75,6 +75,7 @@ export default function Contratacao() {
   const [feedback, setFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
   const [showUnreadModal, setShowUnreadModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cpfInputRef = useRef<HTMLInputElement>(null);
 
   // step 2
   const [confirmaForm, setConfirmaForm] = useState<ConfirmaForm>({
@@ -83,6 +84,29 @@ export default function Contratacao() {
   const [isSubmittingConfirma, setIsSubmittingConfirma] = useState(false);
   const [confirmaFeedback, setConfirmaFeedback] = useState<string | null>(null);
   const [leadFaturaId, setLeadFaturaId] = useState<string | number | null>(null);
+
+  // cpfCnpj stores only raw digits; display uses formatCpfCnpj(cpfCnpj)
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const cursorPos = input.selectionStart ?? input.value.length;
+    const digitsBeforeCursor = input.value.slice(0, cursorPos).replace(/\D/g, "").length;
+    const newRaw = e.target.value.replace(/\D/g, "").slice(0, 14);
+    setCpfCnpj(newRaw);
+    requestAnimationFrame(() => {
+      const el = cpfInputRef.current;
+      if (!el) return;
+      const formatted = formatCpfCnpj(newRaw);
+      let count = 0;
+      let pos = formatted.length;
+      for (let i = 0; i < formatted.length; i++) {
+        if (/\d/.test(formatted[i])) {
+          count++;
+          if (count === digitsBeforeCursor) { pos = i + 1; break; }
+        }
+      }
+      el.setSelectionRange(pos, pos);
+    });
+  };
 
   const formatCpfCnpj = (raw: string) => {
     const d = raw.replace(/\D/g, "").slice(0, 14);
@@ -230,8 +254,9 @@ export default function Contratacao() {
       <h2 className="text-center text-xl font-bold text-blue-500 mb-6">Anexe sua fatura de energia</h2>
       <label className="block text-sm font-semibold text-gray-700 mb-1">Informe seu CPF ou CNPJ</label>
       <input
-        type="text" inputMode="numeric" value={cpfCnpj}
-        onChange={(e) => setCpfCnpj(formatCpfCnpj(e.target.value))}
+        ref={cpfInputRef}
+        type="text" inputMode="numeric" value={formatCpfCnpj(cpfCnpj)}
+        onChange={handleCpfChange}
         placeholder="Digite o numero do seu documento"
         className="w-full rounded-full border border-gray-300 px-5 py-3 text-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400 mb-5"
       />
