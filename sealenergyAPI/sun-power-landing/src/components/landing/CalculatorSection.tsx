@@ -5,6 +5,9 @@ type ParceiroData = {
   empresaParceiraId: number;
   razao_social: string;
   codigoInicialParceria: string;
+  hash_parceiro?: string;
+  temCodigoVendedor?: string;
+  lpId?: string;
 };
 
 type GedisaResponse<T> = {
@@ -23,7 +26,16 @@ const CalculatorSection = () => {
   const [validatedCode, setValidatedCode] = useState<string | null>(null);
   const [validatedSellerName, setValidatedSellerName] = useState("");
   const [leadForm, setLeadForm] = useState({ nome: "", email: "", celular: "" });
+  const [isConfirmPhoneOpen, setIsConfirmPhoneOpen] = useState(false);
+  const [isTokenModalOpen, setIsTokenModalOpen] = useState(false);
+  const [tokenCode, setTokenCode] = useState(["", "", "", "", "", ""]);
+  const [flowFeedback, setFlowFeedback] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [isSendingSms, setIsSendingSms] = useState(false);
+  const [isValidatingToken, setIsValidatingToken] = useState(false);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [leadCreated, setLeadCreated] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const tokenRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const GEDISA_API_BASE =
     import.meta.env.VITE_GEDISA_API_BASE ||
@@ -113,10 +125,144 @@ const CalculatorSection = () => {
     setCodeFeedback(null);
     setValidatedCode(null);
     setValidatedSellerName("");
+    setFlowFeedback(null);
+    setLeadCreated(false);
+    setLeadForm((prev) => ({ ...prev, nome: "", email: "", celular: "" }));
   };
 
   const isLeadFormValid =
     leadForm.nome.trim().length > 1 && /\S+@\S+\.\S+/.test(leadForm.email) && leadForm.celular.replace(/\D/g, "").length >= 10;
+
+  const formatPhoneDisplay = (phone: string) => {
+    const digits = phone.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+    if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7, 11)}`;
+  };
+
+  const handlePhoneChange = (rawValue: string) => {
+    const digits = rawValue.replace(/\D/g, "").slice(0, 11);
+    setLeadForm((prev) => ({ ...prev, celular: digits }));
+  };
+
+  const getTokenCode = () => tokenCode.join("");
+
+  const handleTokenChange = (index: number, value: string) => {
+    const parsed = value.replace(/\D/g, "").slice(-1);
+    const next = [...tokenCode];
+    next[index] = parsed;
+    setTokenCode(next);
+    if (parsed && index < 5) tokenRefs.current[index + 1]?.focus();
+  };
+
+  const handleTokenKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Backspace" && !tokenCode[index] && index > 0) {
+      tokenRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const sendPhoneVerificationSms = async () => {
+    if (!validatedCode || !isLeadFormValid) return;
+
+    setIsSendingSms(true);
+    setFlowFeedback(null);
+
+    try {
+      const response = await fetch(`${GEDISA_API_BASE}/sms-token/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          number: leadForm.celular,
+          nome: leadForm.nome,
+          codigoVendedor: validatedCode,
+          hashParceiro: HASH_PARCEIRO,
+        }),
+      });
+
+      const result: GedisaResponse<{ personal_token?: string }> = await response.json();
+      if (!response.ok || result.status !== "success") {
+        setFlowFeedback({ type: "error", message: result.message || "Não foi possível enviar o SMS." });
+        return;
+      }
+
+      setIsConfirmPhoneOpen(false);
+      setIsTokenModalOpen(true);
+      setTokenCode(["", "", "", "", "", ""]);
+      setFlowFeedback({ type: "success", message: "Código enviado por SMS." });
+      setTimeout(() => tokenRefs.current[0]?.focus(), 0);
+    } catch {
+      setFlowFeedback({ type: "error", message: "Falha ao enviar SMS. Tente novamente." });
+    } finally {
+      setIsSendingSms(false);
+    }
+  };
+
+  const submitLead = async () => {
+    setIsSubmittingLead(true);
+    try {
+      const response = await fetch(`${GEDISA_API_BASE}/leads`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: leadForm.nome,
+          celular: leadForm.celular,
+          email: leadForm.email,
+          codigoVendedor: validatedCode,
+          preencheu_codigo_vendedor: true,
+          parceiro: "contratacao_digital_seal_energy",
+        }),
+      });
+
+      const result: GedisaResponse<{ leadId?: string | number }> = await response.json();
+      if (!response.ok || result.status !== "success") {
+        setFlowFeedback({ type: "error", message: result.message || "Não foi possível cadastrar o lead." });
+        return;
+      }
+
+      setLeadCreated(true);
+      setIsTokenModalOpen(false);
+      setFlowFeedback({ type: "success", message: "Cadastro concluído com sucesso!" });
+    } catch {
+      setFlowFeedback({ type: "error", message: "Falha ao cadastrar lead. Tente novamente." });
+    } finally {
+      setIsSubmittingLead(false);
+    }
+  };
+
+  const validateSmsToken = async () => {
+    const token = getTokenCode();
+    if (!/^\d{6}$/.test(token)) {
+      setFlowFeedback({ type: "error", message: "Preencha os 6 dígitos do token." });
+      return;
+    }
+
+    setIsValidatingToken(true);
+
+    try {
+      const response = await fetch(`${GEDISA_API_BASE}/sms-token/check`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nome: leadForm.nome,
+          number: leadForm.celular,
+          code: token,
+        }),
+      });
+
+      const result: GedisaResponse<{ personal_token?: string }> = await response.json();
+      if (!response.ok || !result.data?.personal_token) {
+        setFlowFeedback({ type: "error", message: result.message || "Token inválido. Verifique e tente novamente." });
+        return;
+      }
+
+      await submitLead();
+    } catch {
+      setFlowFeedback({ type: "error", message: "Falha ao validar token. Tente novamente." });
+    } finally {
+      setIsValidatingToken(false);
+    }
+  };
 
   const validateCodeWithGedisa = async () => {
     const fullCode = getComposedCode().replace(/[^A-Z0-9]/g, "");
@@ -229,6 +375,7 @@ const CalculatorSection = () => {
                   </p>
                 )}
                 <button
+                  type="button"
                   onClick={resetCode}
                   className="text-muted-foreground text-sm font-semibold hover:text-primary hover:underline underline-offset-4 text-center transition-colors"
                 >
@@ -255,16 +402,27 @@ const CalculatorSection = () => {
                   <input
                     type="tel"
                     value={leadForm.celular}
-                    onChange={(e) => setLeadForm((prev) => ({ ...prev, celular: e.target.value }))}
+                    onChange={(e) => handlePhoneChange(e.target.value)}
                     placeholder="Digite seu celular"
                     className="w-full py-2.5 px-4 rounded-xl bg-white/90 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60"
                   />
                   <button
-                    disabled={!isLeadFormValid}
+                    type="button"
+                    onClick={() => {
+                      if (!isLeadFormValid) return;
+                      setFlowFeedback(null);
+                      setIsConfirmPhoneOpen(true);
+                    }}
+                    disabled={!isLeadFormValid || leadCreated}
                     className="w-full py-3 rounded-xl bg-white/20 text-foreground font-bold text-base disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Quero economizar
+                    {leadCreated ? "Cadastro concluído" : "Quero economizar"}
                   </button>
+                  {flowFeedback && (
+                    <p className={`text-sm text-center font-semibold ${flowFeedback.type === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                      {flowFeedback.message}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -350,6 +508,87 @@ const CalculatorSection = () => {
           </div>
         </div>
       </div>
+
+      {isConfirmPhoneOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h4 className="text-center text-xl font-bold text-gray-900">Confirme seu telefone</h4>
+            <p className="mt-4 text-center text-gray-700">Enviaremos um código por SMS para validar este número.</p>
+            <p className="mt-2 text-center text-2xl font-bold text-primary">{formatPhoneDisplay(leadForm.celular)}</p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setIsConfirmPhoneOpen(false)}
+                className="rounded-xl border border-gray-300 py-2.5 font-semibold text-gray-700"
+              >
+                Não está correto
+              </button>
+              <button
+                type="button"
+                onClick={sendPhoneVerificationSms}
+                disabled={isSendingSms}
+                className="rounded-xl bg-primary py-2.5 font-semibold text-white disabled:opacity-60"
+              >
+                {isSendingSms ? "Enviando..." : "Sim, está certo"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isTokenModalOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/60 px-4">
+          <div className="w-full max-w-xl rounded-2xl bg-white p-6 shadow-2xl">
+            <h4 className="text-center text-2xl font-bold text-gray-900">Valide seu telefone</h4>
+            <p className="mt-3 text-center text-gray-600">
+              Para continuar, insira o token que enviamos via SMS para <strong>{formatPhoneDisplay(leadForm.celular)}</strong>
+            </p>
+
+            <div className="mt-6 flex justify-center gap-2">
+              {[0, 1, 2, 3, 4, 5].map((index) => (
+                <input
+                  key={index}
+                  ref={(el) => (tokenRefs.current[index] = el)}
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={1}
+                  value={tokenCode[index]}
+                  onChange={(event) => handleTokenChange(index, event.target.value)}
+                  onKeyDown={(event) => handleTokenKeyDown(index, event)}
+                  className="h-12 w-11 rounded-xl border border-gray-300 text-center text-xl font-bold text-gray-900 focus:border-primary focus:outline-none"
+                />
+              ))}
+            </div>
+
+            <div className="mt-6 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setIsTokenModalOpen(false)}
+                className="w-full rounded-xl border border-gray-300 py-3 font-semibold text-gray-700"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={validateSmsToken}
+                disabled={isValidatingToken || isSubmittingLead}
+                className="w-full rounded-xl bg-primary py-3 font-semibold text-white disabled:opacity-60"
+              >
+                {isValidatingToken || isSubmittingLead ? "Validando..." : "Validar código"}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={sendPhoneVerificationSms}
+              disabled={isSendingSms}
+              className="mt-4 w-full text-center text-sm font-semibold text-primary underline underline-offset-4"
+            >
+              {isSendingSms ? "Reenviando..." : "Reenviar código"}
+            </button>
+          </div>
+        </div>
+      )}
     </section>
   );
 };
