@@ -118,14 +118,32 @@ export default function Contratacao() {
     setIsUploading(true);
     setFeedback(null);
     try {
-      const formData = new FormData();
-      formData.append("cpf_cnpj", digits);
-      formData.append("fatura", file);
-      if (senhaPdf.trim()) formData.append("senha_pdf", senhaPdf.trim());
+      // Converter arquivo para base64
+      const base64Pdf = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          // remove "data:...;base64," prefix
+          resolve(result.split(",")[1] || result);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+
+      const body: Record<string, string> = {
+        base64_pdf: base64Pdf,
+        fileName: file.name,
+        cpf_cnpj: digits,
+      };
+      if (senhaPdf.trim()) body.senha_pdf = senhaPdf.trim();
+
       const response = await fetch(`${GEDISA_API_BASE}/converter-pdf-para-json-formatado`, {
         method: "POST",
-        headers: { Authorization: `Bearer ${personalToken}` },
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${personalToken}`,
+        },
+        body: JSON.stringify(body),
       });
       const result: { status?: string; message?: string; data?: FaturaAPIData } =
         await response.json().catch(() => ({}));
