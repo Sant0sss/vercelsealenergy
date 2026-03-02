@@ -122,7 +122,7 @@ export default function Contratacao() {
       formData.append("cpf_cnpj", digits);
       formData.append("fatura", file);
       if (senhaPdf.trim()) formData.append("senha_pdf", senhaPdf.trim());
-      const response = await fetch(`${GEDISA_API_BASE}/faturas`, {
+      const response = await fetch(`${GEDISA_API_BASE}/lead-faturas`, {
         method: "POST",
         headers: { Authorization: `Bearer ${personalToken}` },
         body: formData,
