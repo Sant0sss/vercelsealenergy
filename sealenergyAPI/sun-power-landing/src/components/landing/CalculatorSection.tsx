@@ -35,6 +35,7 @@ const CalculatorSection = () => {
   const [isValidatingToken, setIsValidatingToken] = useState(false);
   const [isSubmittingLead, setIsSubmittingLead] = useState(false);
   const [leadCreated, setLeadCreated] = useState(false);
+  const [personalToken, setPersonalToken] = useState<string | null>(null);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const tokenRefs = useRef<(HTMLInputElement | null)[]>([]);
 
@@ -128,6 +129,7 @@ const CalculatorSection = () => {
     setValidatedSellerName("");
     setFlowFeedback(null);
     setLeadCreated(false);
+    setPersonalToken(null);
     setLeadForm((prev) => ({ ...prev, nome: "", email: "", celular: "" }));
   };
 
@@ -193,6 +195,7 @@ const CalculatorSection = () => {
 
       const personalToken = extractPersonalToken(result);
       if (personalToken) {
+        setPersonalToken(personalToken);
         setIsConfirmPhoneOpen(false);
         setFlowFeedback({ type: "success", message: "Telefone validado automaticamente." });
         await submitLead();
@@ -212,11 +215,19 @@ const CalculatorSection = () => {
   };
 
   const submitLead = async () => {
+    if (!personalToken) {
+      setFlowFeedback({ type: "error", message: "Token de autenticação não encontrado. Valide o telefone novamente." });
+      return;
+    }
+
     setIsSubmittingLead(true);
     try {
       const response = await fetch(`${GEDISA_API_BASE}/leads`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${personalToken}`,
+        },
         body: JSON.stringify({
           nome: leadForm.nome,
           celular: leadForm.celular,
@@ -264,11 +275,13 @@ const CalculatorSection = () => {
       });
 
       const result: GedisaResponse<{ personal_token?: string }> = await response.json();
-      const personalToken = extractPersonalToken(result);
-      if (!response.ok || !personalToken) {
+      const receivedToken = extractPersonalToken(result);
+      if (!response.ok || !receivedToken) {
         setFlowFeedback({ type: "error", message: result.message || "Token inválido. Verifique e tente novamente." });
         return;
       }
+
+      setPersonalToken(receivedToken);
 
       await submitLead();
     } catch {

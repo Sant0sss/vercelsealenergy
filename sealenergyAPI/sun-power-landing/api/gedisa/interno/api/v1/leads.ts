@@ -6,11 +6,16 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
+    const incomingAuthorization = req.headers?.authorization;
+    const fallbackToken = process.env.GEDISA_BEARER_TOKEN;
+    const authorization = incomingAuthorization || (fallbackToken ? `Bearer ${fallbackToken}` : undefined);
+
     const upstream = await fetch(GEDISA_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
+        ...(authorization ? { Authorization: authorization } : {}),
       },
       body: typeof req.body === "string" ? req.body : JSON.stringify(req.body || {}),
     });
